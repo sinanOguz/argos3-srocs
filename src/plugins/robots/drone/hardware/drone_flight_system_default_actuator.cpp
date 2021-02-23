@@ -10,10 +10,7 @@
 
 #include <argos3/plugins/robots/generic/hardware/robot.h>
 
-#include <argos3/core/utility/math/vector2.h>
-
-#include <argos3/core/utility/math/general.h>
-
+#include <argos3/core/utility/math/vector3.h>
 
 
 #include <termios.h>
@@ -77,11 +74,7 @@ namespace argos {
             m_pcPixhawk->GetInitialPosition().value();
          uint8_t unTargetSystem =
             m_pcPixhawk->GetTargetSystem().value();
-         Real fAzimuth = std::atan2(m_cTargetPosition.GetY(),m_cTargetPosition.GetX()); 
-         Real fTargetDistance = std::sqrt (Square(m_cTargetPosition.GetX())  +  Square(m_cTargetPosition.GetY()));
-         CVector2 fTargetPositionX {
-            fTargetDistance *  std::cos(fAzimuth + cInitialOrientation.GetZ()),
-            fTargetDistance *  std::sin(fAzimuth + cInitialOrientation.GetZ())};
+         CVector3 fTargetPosition = m_cTargetPosition.RotateZ(cInitialOrientation);
          /* initialize a setpoint struct */
          mavlink_set_position_target_local_ned_t tSetpoint;
          tSetpoint.target_system    = m_pcPixhawk->GetTargetSystem().value();
@@ -89,9 +82,9 @@ namespace argos {
          tSetpoint.type_mask = MAVLINK_MSG_SET_POSITION_TARGET_LOCAL_NED_POSITION &
 				   		          MAVLINK_MSG_SET_POSITION_TARGET_LOCAL_NED_YAW_ANGLE;
          tSetpoint.coordinate_frame = MAV_FRAME_LOCAL_NED;
-         tSetpoint.x = fTargetPositionX.GetX() + cInitialPosition.GetX();
-         tSetpoint.y = fTargetPositionX.GetY() + cInitialPosition.GetY();
-         tSetpoint.z = -m_cTargetPosition.GetZ() + cInitialPosition.GetZ();
+         tSetpoint.x = fTargetPosition.GetX() + cInitialPosition.GetX();
+         tSetpoint.y = fTargetPosition.GetY() + cInitialPosition.GetY();
+         tSetpoint.z = -fTargetPosition.GetZ() + cInitialPosition.GetZ();
          tSetpoint.yaw = m_cTargetYawAngle.GetValue() + cInitialOrientation.GetZ();
          mavlink_message_t tMessage;
          mavlink_msg_set_position_target_local_ned_encode(unTargetSystem, 0, &tMessage, &tSetpoint);
