@@ -10,6 +10,8 @@
 
 #include <argos3/plugins/robots/generic/hardware/robot.h>
 
+#include <argos3/core/utility/math/vector.h>
+
 #include <termios.h>
 
 #include <cerrno>
@@ -19,6 +21,8 @@
 #define MAVLINK_MSG_SET_POSITION_TARGET_LOCAL_NED_VELOCITY     0b0000110111000111
 #define MAVLINK_MSG_SET_POSITION_TARGET_LOCAL_NED_YAW_ANGLE    0b0000100111111111
 #define MAVLINK_MSG_SET_POSITION_TARGET_LOCAL_NED_YAW_RATE     0b0000010111111111
+#define MAVLINK_MSG_SET_POSITION_TARGET_LOCAL_NED_TAKEOFF      0x1000
+#define MAVLINK_MSG_SET_POSITION_TARGET_LOCAL_NED_LAND         0x2000
 
 namespace argos {
 
@@ -69,16 +73,23 @@ namespace argos {
             m_pcPixhawk->GetInitialPosition().value();
          uint8_t unTargetSystem =
             m_pcPixhawk->GetTargetSystem().value();
+         Real fAzimuth = std::atan2(std::abs(m_cTargetPosition.GetY()),
+                                 std::abs(m_cTargetPosition.GetX())); 
+         Real fTargetDistance = std::sqrt (m_cTargetPosition.GetX()^2  +  m_cTargetPosition.GetY()^2);
+         CVector2 fTargetPositionX {
+            fTargetDistance *  std::cos(fAzimuth + cInitialOrientation.GetZ(),
+            fTargetDistance *  std::sin(fAzimuth + cInitialOrientation.GetZ() };
          /* initialize a setpoint struct */
          mavlink_set_position_target_local_ned_t tSetpoint;
+         tSetpoint.target_system    = m_pcPixhawk->GetTargetSystem().value();
+	      tSetpoint.target_component = m_pcPixhawk->GetTargetComponent().value();
          tSetpoint.type_mask = MAVLINK_MSG_SET_POSITION_TARGET_LOCAL_NED_POSITION &
 				   		          MAVLINK_MSG_SET_POSITION_TARGET_LOCAL_NED_YAW_ANGLE;
          tSetpoint.coordinate_frame = MAV_FRAME_LOCAL_NED;
-         tSetpoint.x = m_cTargetPosition.GetX() - cInitialPosition.GetX();
-         tSetpoint.y = m_cTargetPosition.GetY() - cInitialPosition.GetY();
-         // TODO check sign here, +Z is down in MAVLink and up in ARGoS
-         tSetpoint.z = -m_cTargetPosition.GetZ() - cInitialPosition.GetZ();
-         tSetpoint.yaw = m_cTargetYawAngle.GetValue() - cInitialOrientation.GetZ();
+         tSetpoint.x = fTargetPositionX.GetX() + cInitialPosition.GetX();
+         tSetpoint.y = fTargetPositionX.GetY() + cInitialPosition.GetY();
+         tSetpoint.z = -m_cTargetPosition.GetZ() + cInitialPosition.GetZ();
+         tSetpoint.yaw = m_cTargetYawAngle.GetValue() + cInitialOrientation.GetZ();
          mavlink_message_t tMessage;
          mavlink_msg_set_position_target_local_ned_encode(unTargetSystem, 0, &tMessage, &tSetpoint);
          try {
@@ -190,6 +201,50 @@ namespace argos {
                 << std::endl;
       }
    }
+
+
+   /****************************************/
+   /****************************************/
+
+      void CDroneFlightSystemDefaultActuator::AutoLand(Real f_landing_rate, Real f_yaw_angle, const CVector3& c_landing_position)  {
+      if(m_pcPixhawk->Ready()) {
+         /* build commmand for landing the drone */
+         mavlink_command_long_t tCommand = {0};
+         tCommand.target_system    = m_pcPixhawk->GetTargetSystem().value(); // system_ID
+         tCommand.target_component = m_pcPixhawk->GetTargetComponent().value(); // autopilot_ID
+         tCommand.command          = MAV_CMD_NAV_LAND_LOCAL;
+         tCommand.confirmation     = 1;
+         tCommand.param1           = 0; // Landing target number
+         tCommand.param2           = 0.08660254; // Maximum accepted offset from desired landing position in m : d = sqrt(x^2 + y^2 + z^2)
+         tCommand.param3           = f_landing_rate;
+         tCommand.param4           = f_yaw_angle;
+         tCommand.param5           = c_landing_position.GetY();
+         tCommand.param6           = c_landing_position.GetX();
+         tCommand.param7           = c_landing_position.GetZ();
+         /* encode the message */
+         mavlink_message_t tMessage;
+         mavlink_msg_command_long_encode(m_pcPixhawk->GetTargetSystem().value(),
+                                         0,
+                                         &tMessage,
+                                         &tCommand);
+         /* send the message */
+         try {
+            Write(tMessage);
+         }
+         catch(CARGoSException& ex) {
+            LOGERR << "[ERROR] Could not senf the land command: " 
+                   << ex.what()
+                   << std::endl;
+         }
+      }
+      else {
+         LOGERR << "[WARNING] "
+                << "Attempt to land drone before Pixhawk was ready"
+                << std::endl;
+      }
+   }
+
+
 
    /****************************************/
    /****************************************/
