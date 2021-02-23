@@ -77,12 +77,11 @@ namespace argos {
             m_pcPixhawk->GetInitialPosition().value();
          uint8_t unTargetSystem =
             m_pcPixhawk->GetTargetSystem().value();
-         Real fAzimuth = std::atan2(std::abs(m_cTargetPosition.GetY()),
-                                 std::abs(m_cTargetPosition.GetX())); 
+         Real fAzimuth = std::atan2(m_cTargetPosition.GetY(),m_cTargetPosition.GetX()); 
          Real fTargetDistance = std::sqrt (Square(m_cTargetPosition.GetX())  +  Square(m_cTargetPosition.GetY()));
-         CVector2 fTargetPositionX (
-            fTargetDistance *  std::cos(fAzimuth + cInitialOrientation.GetZ(),
-            fTargetDistance *  std::sin(fAzimuth + cInitialOrientation.GetZ());
+         CVector2 fTargetPositionX {
+            fTargetDistance *  std::cos(fAzimuth + cInitialOrientation.GetZ()),
+            fTargetDistance *  std::sin(fAzimuth + cInitialOrientation.GetZ())};
          /* initialize a setpoint struct */
          mavlink_set_position_target_local_ned_t tSetpoint;
          tSetpoint.target_system    = m_pcPixhawk->GetTargetSystem().value();
