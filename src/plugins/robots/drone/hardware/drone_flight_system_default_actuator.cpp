@@ -74,7 +74,7 @@ namespace argos {
             m_pcPixhawk->GetInitialPosition().value();
          uint8_t unTargetSystem =
             m_pcPixhawk->GetTargetSystem().value();
-         CVector3 fTargetPosition = m_cTargetPosition.RotateZ(cInitialOrientation.GetZ());
+         CVector3& fTargetPosition = m_cTargetPosition.RotateZ(cInitialOrientation.GetZ());
          /* initialize a setpoint struct */
          mavlink_set_position_target_local_ned_t tSetpoint;
          tSetpoint.target_system    = m_pcPixhawk->GetTargetSystem().value();
