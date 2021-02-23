@@ -12,6 +12,10 @@
 
 #include <argos3/core/utility/math/vector2.h>
 
+#include <argos3/core/utility/math/general.h>
+
+
+
 #include <termios.h>
 
 #include <cerrno>
@@ -75,7 +79,7 @@ namespace argos {
             m_pcPixhawk->GetTargetSystem().value();
          Real fAzimuth = std::atan2(std::abs(m_cTargetPosition.GetY()),
                                  std::abs(m_cTargetPosition.GetX())); 
-         Real fTargetDistance = std::sqrt (m_cTargetPosition.GetX()^2  +  m_cTargetPosition.GetY()^2);
+         Real fTargetDistance = std::sqrt (Square(m_cTargetPosition.GetX())  +  Square(m_cTargetPosition.GetY()));
          CVector2 fTargetPositionX {
             fTargetDistance *  std::cos(fAzimuth + cInitialOrientation.GetZ(),
             fTargetDistance *  std::sin(fAzimuth + cInitialOrientation.GetZ() };
