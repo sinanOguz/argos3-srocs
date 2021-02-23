@@ -10,7 +10,7 @@
 
 #include <argos3/plugins/robots/generic/hardware/robot.h>
 
-#include <argos3/core/utility/math/vector.h>
+#include <argos3/core/utility/math/vector2.h>
 
 #include <termios.h>
 
