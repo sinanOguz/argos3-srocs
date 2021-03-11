@@ -4,16 +4,7 @@
 trajectory = {
    [1]  =  { vector3( 0,  0,   0),  0.0},
    [10] =  { vector3( 0,  0, 1.25),  0.0},
-   [40] =  { vector3( 4,  2, 1.25),  0.0},
-   [60] =  { vector3( 0,  0, 1.25),  0.0},
-   [80] =  { vector3( 2, -4, 1.25),  0.0},
-   [100] = { vector3( 0,  0, 1.25),  0.0},
-   [120] = { vector3( 0,  0, 1.25),  0.5},  
-   [140] = { vector3( 4,  2, 1.25),  0.5},
-   [160] = { vector3( 0,  0, 1.25),  0.5},
-   [180] = { vector3( 0,  0, 1.25), -0.5},
-   [200] = { vector3(-2, -4, 1.25), -0.5},
-   [220] = { vector3( 0,  0, 1.25),  0.0},
+   [40] =  { vector3( 4,  4, 1.25),  0.0}
 }
 
 function init()
@@ -27,7 +18,7 @@ end
 function step()
    for timestamp, path in pairs(trajectory) do
       if time == timestamp then
-         robot.flight_system.set_targets(table.unpack(path))
+         robot.flight_system.set_target_pose(table.unpack(path))
          log(tostring(time) .. ": " .. tostring(robot.flight_system.position))
       end
    end

@@ -63,6 +63,12 @@ namespace argos
       m_cAngularVelocityCumulativeError.Set(0.0, 0.0, 0.0);
       m_fAltitudeCumulativeError = 0.0;
       m_fTargetPositionZPrev = 0.0;
+      /* reset the gyro bias */   
+      m_fGyroBias = BIAS_GYRO;
+      m_fAccelBias = BIAS_ACCEL;   
+      m_fARW = RW_GYRO;
+      m_fVRW = RW_ACCEL;
+      m_pcRNG = CRandom::CreateRNG("argos");
       /* update the axis-aligned bounding box, anchors, and entities */
       UpdateEntityStatus();
    }
@@ -242,24 +248,49 @@ namespace argos
          (JR * m_cAngularVelocity.GetX() * fOmegaR / INERTIA.GetY()) +
          (m_cAngularVelocity.GetZ() * m_cAngularVelocity.GetX() * (INERTIA.GetZ() - INERTIA.GetX()) / INERTIA.GetY()),
          (fTorqueZ / INERTIA.GetZ()) +
-         (m_cAngularVelocity.GetY() * m_cAngularVelocity.GetX() * (INERTIA.GetX() - INERTIA.GetY()) / INERTIA.GetZ()),
+         (m_cAngularVelocity.GetY() * m_cAngularVelocity.GetX() * (INERTIA.GetX() - INERTIA.GetY()) / INERTIA.GetZ())
       };
-      /* update the velocity using trapezoid integration */
-      cAcceleration = 0.5 * (m_cAccelerationPrev + cAcceleration);
-      m_cVelocity += cAcceleration * GetPM3DEngine().GetPhysicsClockTick();
-      m_cAccelerationPrev = cAcceleration;
+      /* gyroscope sensor readings */
+      cAngularAcceleration.Set(
+         
+         cAngularAcceleration.GetX() + m_pcRNG->Gaussian(STD_GYRO_X,MEAN_SENS) + m_fGyroBias,
+         cAngularAcceleration.GetY() + m_pcRNG->Gaussian(STD_GYRO_Y,MEAN_SENS) + m_fGyroBias,
+         cAngularAcceleration.GetZ() + m_pcRNG->Gaussian(STD_GYRO_Z,MEAN_SENS) + m_fGyroBias
+      );
+      m_fGyroBias = m_fGyroBias + m_fARW *  m_pcRNG->Gaussian(STD_BIAS, MEAN_SENS);
+      /* update the gyro bias angular random walk */
+      m_fARW =  m_fARW * std::sqrt(GetPM3DEngine().GetPhysicsClockTick());
       /* update the angular velocity using trapezoid integration */
       cAngularAcceleration = 0.5 * (m_cAngularAccelerationPrev + cAngularAcceleration);
       m_cAngularVelocity += cAngularAcceleration * GetPM3DEngine().GetPhysicsClockTick();
       m_cAngularAccelerationPrev = cAngularAcceleration;
-      /* update the position using trapezoid integration */
-      m_cVelocity = 0.5 * (m_cVelocityPrev + m_cVelocity);
-      m_cPosition += m_cVelocity * GetPM3DEngine().GetPhysicsClockTick();
-      m_cVelocityPrev = m_cVelocity;
       /* update the orientation using trapezoid integration */
       m_cAngularVelocity = 0.5 * (m_cAngularVelocityPrev + m_cAngularVelocity);
       m_cOrientation += m_cAngularVelocity * GetPM3DEngine().GetPhysicsClockTick();
       m_cAngularVelocityPrev = m_cAngularVelocity;
+      /* accelerometer sensor readings */
+      cAcceleration.Set(
+         cAcceleration.GetX() + m_pcRNG->Gaussian(STD_ACCEL_X,MEAN_SENS) + m_fAccelBias,
+         cAcceleration.GetY() + m_pcRNG->Gaussian(STD_ACCEL_Y,MEAN_SENS) + m_fAccelBias,
+         cAcceleration.GetZ() + m_pcRNG->Gaussian(STD_ACCEL_Z,MEAN_SENS) + m_fAccelBias
+      );
+      // + m_cPM3DEngine.GetGravity()
+      m_fAccelBias = m_fAccelBias + m_fVRW *  m_pcRNG->Gaussian(STD_BIAS, MEAN_SENS);
+      /* update the accel bias velocity random walk */
+      m_fVRW =  m_fVRW * std::sqrt(GetPM3DEngine().GetPhysicsClockTick());
+      /* update the velocity using trapezoid integration */
+      cAcceleration = 0.5 * (m_cAccelerationPrev + cAcceleration);
+      m_cVelocity += cAcceleration * GetPM3DEngine().GetPhysicsClockTick();
+      m_cAccelerationPrev = cAcceleration;
+      /* update the position using trapezoid integration */
+      m_cVelocity = 0.5 * (m_cVelocityPrev + m_cVelocity);
+      m_cPosition += m_cVelocity * GetPM3DEngine().GetPhysicsClockTick();
+      m_cVelocityPrev = m_cVelocity;
+
+      // ==================================================================
+      /* POSITION AND ATTITUDE STATE ESTIMATOR */
+      // ==================================================================
+
    }
 
    /****************************************/
@@ -367,9 +398,26 @@ namespace argos
    const Real CPointMass3DDroneModel::ROLL_PITCH_KI = 0;
    const Real CPointMass3DDroneModel::ROLL_PITCH_KD = 6;
    const Real CPointMass3DDroneModel::ROOT_TWO = std::sqrt(2.0);
+   /* sensor noise coefficents*/
+   const Real CPointMass3DDroneModel::MEAN_SENS = 0;
+   const Real CPointMass3DDroneModel::STD_GYRO_X = 0.67;
+   const Real CPointMass3DDroneModel::STD_GYRO_Y = 0.78;
+   const Real CPointMass3DDroneModel::STD_GYRO_Z = 0.12;
+   const Real CPointMass3DDroneModel::STD_ACCEL_X =  0.1;
+   const Real CPointMass3DDroneModel::STD_ACCEL_Y = 0.1;
+   const Real CPointMass3DDroneModel::STD_ACCEL_Z = 0.12;
+   const Real CPointMass3DDroneModel::STD_BIAS = 1;
+   const Real CPointMass3DDroneModel::BIAS_GYRO = 0.01;
+   const Real CPointMass3DDroneModel::BIAS_ACCEL = 0.03;
+   const Real CPointMass3DDroneModel::RW_GYRO = 0.001;
+   const Real CPointMass3DDroneModel::RW_ACCEL = 0.003;
 
    /****************************************/
    /****************************************/
+
+
+
+
 
    REGISTER_STANDARD_POINTMASS3D_OPERATIONS_ON_ENTITY(CDroneEntity, CPointMass3DDroneModel);
 

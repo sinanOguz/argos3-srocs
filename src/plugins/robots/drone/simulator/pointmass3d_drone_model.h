@@ -15,6 +15,8 @@ namespace argos {
 }
 
 #include <argos3/plugins/simulator/physics_engines/pointmass3d/pointmass3d_model.h>
+#include <argos3/core/utility/math/rng.h>
+
 
 namespace argos {
 
@@ -86,6 +88,13 @@ namespace argos {
       CVector3 m_cAngularVelocityCumulativeError;
       Real m_fAltitudeCumulativeError;
       Real m_fTargetPositionZPrev;
+       /* */
+      Real m_fGyroBias;
+      Real m_fAccelBias;
+      Real m_fARW;
+      Real m_fVRW;
+
+
 
       const static Real ROOT_TWO;
       /* height of the drone's body */ 
@@ -125,6 +134,24 @@ namespace argos {
       const static Real YAW_KP; 
       const static Real YAW_KI; 
       const static Real YAW_KD; 
+      /* sensors noise constants*/
+      const static Real MEAN_SENS;
+      const static Real STD_GYRO_X;
+      const static Real STD_GYRO_Y;
+      const static Real STD_GYRO_Z;
+      const static Real STD_ACCEL_X;
+      const static Real STD_ACCEL_Y;
+      const static Real STD_ACCEL_Z;
+      const static Real STD_BIAS;
+      const static Real BIAS_GYRO;
+      const static Real BIAS_ACCEL;   
+      const static Real RW_GYRO;
+      const static Real RW_ACCEL;
+
+      protected:
+
+      /** Random number generator */
+      CRandom::CRNG* m_pcRNG;
    };
 
 }
